@@ -1,0 +1,803 @@
+  <style>
+    * { 
+      box-sizing: border-box; 
+      margin: 0; 
+      padding: 0; 
+      font-family: 'Inter', 'Segoe UI', -apple-system, sans-serif; 
+    }
+    body { 
+      background-color: #0b0c10; 
+      color: #f1f5f9; 
+      display: flex; 
+      height: 100vh; 
+    }
+    .sidebar { 
+      width: 240px; 
+      background-color: #111217; 
+      padding: 20px; 
+      border-right: 1px solid rgba(255, 255, 255, 0.05); 
+    }
+    .logo { 
+      font-size: 19px; 
+      font-weight: 800; 
+      color: #ffffff; 
+      margin-bottom: 30px; 
+      letter-spacing: 0.5px;
+      text-shadow: 0 0 15px rgba(99, 102, 241, 0.5); 
+    }
+    .menu-item { 
+      padding: 12px 16px; 
+      color: #94a3b8; 
+      cursor: pointer; 
+      border-radius: 8px; 
+      margin-bottom: 6px; 
+      font-size: 14px; 
+      font-weight: 500;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+    .menu-item:hover {
+      color: #ffffff;
+      background-color: rgba(255, 255, 255, 0.03);
+    }
+    .menu-item.active { 
+      background: linear-gradient(135deg, rgba(147, 51, 234, 0.25), rgba(79, 70, 229, 0.25)) !important; 
+      border: 1px solid rgba(147, 51, 234, 0.5) !important;
+      color: #ffffff !important; 
+      font-weight: 600;
+      box-shadow: 0 0 20px rgba(147, 51, 234, 0.35), inset 0 0 10px rgba(147, 51, 234, 0.15);
+    }
+    .menu-item.active::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -60%;
+      width: 30%;
+      height: 200%;
+      background: rgba(255, 255, 255, 0.25);
+      transform: rotate(30deg);
+      animation: sparkleSweep 4.5s infinite ease-in-out;
+    }
+    @keyframes sparkleSweep {
+      0% { left: -60%; }
+      18% { left: 130%; }
+      100% { left: 130%; }
+    }
+    .main-content { 
+      flex: 1; 
+      padding: 30px; 
+      overflow-y: auto; 
+      display: flex;
+      flex-direction: column;
+    }
+    .header h2 {
+      font-size: 26px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      background: linear-gradient(45deg, #00f2fe, #4facfe, #00ff87);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 25px rgba(79, 172, 254, 0.35);
+      margin-bottom: 4px;
+    }
+    .header { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      margin-bottom: 25px; 
+    }
+    .btn { 
+      background-color: #1e293b; 
+      color: white; 
+      border: 1px solid rgba(255, 255, 255, 0.08); 
+      padding: 10px 18px; 
+      border-radius: 8px; 
+      cursor: pointer; 
+      font-weight: 600; 
+      font-size: 13px;
+      letter-spacing: 0.5px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(255, 255, 255, 0.1);
+    }
+    .btn-orange { 
+      background: linear-gradient(135deg, #f59e0b, #ea580c) !important; 
+      border: none !important;
+    }
+    .btn-orange:hover {
+      box-shadow: 0 0 15px rgba(234, 88, 12, 0.5) !important;
+    }
+    .data-table { 
+      width: 100%; 
+      border-collapse: separate; 
+      border-spacing: 0;
+      background: rgba(22, 25, 37, 0.7); 
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: 12px; 
+      overflow: hidden; 
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+    }
+    .data-table th, .data-table td { 
+      padding: 13px 12px;     
+      text-align: center;     
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04); 
+      font-size: 13px; 
+    }
+    .data-table th { 
+      background-color: rgba(255, 255, 255, 0.02); 
+      color: #94a3b8; 
+      font-weight: 600;
+      font-size: 12px; 
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 2px solid rgba(255, 255, 255, 0.08);
+    }
+    .data-table tbody tr:hover { 
+      background-color: rgba(59, 130, 246, 0.04) !important; 
+      box-shadow: inset 3px 0 0 #3b82f6;
+    }
+    .input-inline {
+      background-color: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #f1f5f9;
+      padding: 6px 8px;
+      width: 100%;
+      border-radius: 6px;
+      outline: none;
+      text-align: center;    
+      font-size: 13px;
+      transition: background-color 0.4s ease, border-color 0.2s ease, color 0.2s ease;
+    }
+    .input-inline:focus {
+      background-color: #0f111a !important; 
+      border-color: #3b82f6;
+      color: #ffffff;
+      box-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+    }
+    .select-inline {
+      background-color: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #f1f5f9;
+      padding: 6px 8px;
+      width: 100%;
+      border-radius: 6px;
+      outline: none;
+      cursor: pointer;
+      text-align: center;         
+      text-align-last: center;    
+      font-size: 13px;
+      transition: all 0.2s ease;
+    }
+    .select-inline:focus {
+      background-color: #111217;
+      border-color: #3b82f6;
+      box-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+    }
+    .select-inline option {
+      background-color: #111217;
+      color: #f1f5f9;
+    }
+    .order-link { 
+      color: #38bdf8; 
+      text-decoration: none; 
+      font-weight: 600; 
+      transition: color 0.2s;
+    }
+    .order-link:hover { 
+      color: #0ea5e9;
+      text-decoration: underline; 
+    }
+    input[type="checkbox"] {
+      accent-color: #3b82f6;
+      transform: scale(1.1);
+      cursor: pointer;
+    }
+    .status-saving { 
+      color: #eab308; 
+      font-size: 12px; 
+      font-style: italic; 
+    }
+    .status-saved { 
+      color: #4ade80; 
+      font-size: 12px; 
+      font-style: italic; 
+    }
+    .filter-container {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      flex-wrap: wrap; 
+      background: rgba(25, 28, 36, 0.8);
+      padding: 6px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .filter-tab {
+      color: #94a3b8;
+      border: 1px solid transparent;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+    }
+    .filter-tab:hover {
+      color: #ffffff;
+      background-color: rgba(255, 255, 255, 0.03);
+    }
+    .filter-tab.active {
+      background-color: #3b82f6;
+      color: #ffffff;
+      font-weight: 600;
+      box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+    }
+    .badge-count {
+      background-color: #ef4444; 
+      color: white;
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 6px;
+      margin-left: 6px;
+      font-weight: 700;
+    }
+    .badge-orange {
+      background-color: #f97316; 
+    }
+    .badge-green {
+      background-color: #28a745; 
+    }
+    .badge-purple {
+    background-color: #6f42c1 !important;
+    color: #ffffff !important;
+    }
+    #search-input:focus {
+    border-color: #4ade80 !important; /* Đổi màu viền sang xanh lá giống nút */
+    box-shadow: 0 0 5px rgba(74, 222, 128, 0.2);
+  }
+  /* --- ĐOẠN 1: Giúp 2 ô VND nhận và Tiền lời bị khóa vẫn sáng rõ nét, không bị mờ --- */
+  input[readonly] {
+    color: #4ade80 !important; /* Giữ nguyên màu chữ xanh neon của bạn */
+    opacity: 1 !important; /* Xóa bỏ độ mờ mặc định của trình duyệt */
+    background-color: #15181f !important; /* Giữ nền tối đồng bộ */
+    cursor: not-allowed; /* Hiện icon biển cấm khi di chuột vào */
+  }
+
+  /* --- ĐOẠN 2: Hiệu ứng sáng nhẹ hàng khi di chuột qua, giúp nhìn không bị lệch dòng --- */
+  tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.04) !important; /* Nền hàng sáng lên một chút tinh tế */
+    transition: background-color 0.15s ease;
+  }
+  /* Container bọc ngoài: Đưa cụm phân trang ra chính giữa bên dưới bảng dữ liệu */
+  #pagination-container {
+    margin-top: 20px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: center; /* Đưa ra giữa hành lang web */
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* Thiết kế lại các nút bấm phân trang phong cách Gaming mượt mà */
+  .page-btn {
+    min-width: 36px;
+    height: 36px;
+    padding: 0 10px;
+    background-color: #1a1d26 !important; /* Màu nền tối sâu cùng tông với bảng */
+    color: #a0aec0 !important; /* Chữ màu xám nhẹ */
+    border: 1px solid #2d323f !important; /* Viền mờ */
+    border-radius: 8px !important; /* Bo góc mềm mại */
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Hiệu ứng khi rê chuột qua các nút (Chừa nút đang bị khóa) */
+  .page-btn:hover:not(:disabled) {
+    border-color: #4ade80 !important; /* Viền sáng xanh lá neon */
+    color: #4ade80 !important; /* Chữ đổi sang xanh lá */
+    background-color: rgba(74, 222, 128, 0.05) !important; /* Nền ửng xanh nhẹ */
+    transform: translateY(-1px); /* Nút nhấc nhẹ lên tạo chiều sâu */
+  }
+
+  /* Trạng thái nút của Trang Hiện Tại đang xem (Active) */
+  .page-btn.active {
+    background-color: #4ade80 !important; /* Đổi hẳn nền sang xanh lá thương hiệu */
+    color: #0b0d12 !important; /* Chữ màu tối để nổi bật trên nền xanh */
+    font-weight: 600 !important;
+    border-color: #4ade80 !important;
+    box-shadow: 0 0 12px rgba(74, 222, 128, 0.3); /* Hiệu ứng tỏa sáng nhẹ quanh nút */
+  }
+
+  /* Trạng thái nút bị khóa (Ví dụ đang ở trang 1 thì nút quay lại ◀ bị mờ) */
+  .page-btn:disabled {
+    opacity: 0.25;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+
+  #date-filter::-webkit-calendar-picker-indicator {
+    filter: invert(1); /* Đảo màu icon lịch sang màu trắng để nổi bật trên nền tối */
+    cursor: pointer;
+  }
+  #date-filter:focus {
+    border-color: #4ade80 !important;
+    box-shadow: 0 0 5px rgba(74, 222, 128, 0.2);
+  }
+
+  /* Toàn bộ thanh công cụ dàn hàng ngang hoàn hảo */
+  .dashboard-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    margin: 20px 0;
+    width: 100%;
+  }
+
+  .toolbar-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* Custom ô gõ tìm kiếm */
+  .search-box input {
+    width: 260px;
+    padding: 10px 14px;
+    background-color: #111318;
+    color: #fff;
+    border: 1px solid #2d323f;
+    border-radius: 8px;
+    font-size: 13px;
+    outline: none;
+    transition: all 0.2s ease;
+  }
+  .search-box input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
+  }
+
+  /* Custom ô chọn ngày tích hợp nút xóa nhanh hình chữ X */
+  .date-box {
+    display: flex;
+    align-items: center;
+    background-color: #111318;
+    border: 1px solid #2d323f;
+    border-radius: 8px;
+    padding-right: 8px;
+  }
+  .date-box input[type="date"] {
+    padding: 10px 12px;
+    background: transparent;
+    color: #fff;
+    border: none;
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+  }
+  .date-box input::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    cursor: pointer;
+  }
+  .btn-clear-date {
+    background: transparent;
+    color: #ef4444;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 0 4px;
+    font-weight: bold;
+  }
+
+  /* 🚀 SÁNG TẠO: Nút Làm mới có hiệu ứng phát sáng chuyển động (Glow) */
+  .btn-glow-refresh {
+    padding: 10px 16px;
+    background-color: #111318;
+    color: #4ade80;
+    border: 1px solid #4ade80;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 5px rgba(74, 222, 128, 0.1);
+  }
+  .btn-glow-refresh:hover {
+    background-color: #4ade80;
+    color: #0b0d12;
+    box-shadow: 0 0 15px rgba(74, 222, 128, 0.4);
+    transform: translateY(-1px);
+  }
+
+  /* 🚀 SÁNG TẠO: Khung thống kê doanh thu đổ bóng phát sáng neon cực đẹp */
+  .revenue-card-glow {
+    display: flex;
+    align-items: center;
+    background: linear-gradient(135deg, #111318 0%, #15181f 100%);
+    border: 1px solid #2d323f;
+    border-radius: 10px;
+    padding: 8px 24px;
+    gap: 20px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    position: relative;
+  }
+  /* Hiệu ứng viền phát sáng mờ phía sau khung tiền */
+  .revenue-card-glow::after {
+    content: '';
+    position: absolute;
+    top: -1px; left: -1px; right: -1px; bottom: -1px;
+    border-radius: 10px;
+    background: linear-gradient(90deg, #3b82f6, #eab308, #4ade80);
+    z-index: -1;
+    opacity: 0.15;
+    filter: blur(4px);
+  }
+
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 80px;
+  }
+  .stat-label {
+    font-size: 11px;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+  }
+  .stat-value {
+    font-size: 15px;
+    font-weight: 700;
+  }
+  /* Màu sắc Gaming phân biệt rõ ràng 3 cột tiền */
+  .val-blue { color: #3b82f6; text-shadow: 0 0 8px rgba(59, 130, 246, 0.3); }
+  .val-orange { color: #eab308; text-shadow: 0 0 8px rgba(234, 179, 8, 0.3); }
+  .val-green { color: #4ade80; text-shadow: 0 0 10px rgba(74, 222, 128, 0.5); }
+
+  /* Vạch ngăn cách dọc tinh tế giữa các ô tiền */
+  .divider {
+    width: 1px;
+    height: 24px;
+    background-color: #2d323f;
+  }
+
+  .val-cyan {
+  color: #22d3ee !important; /* Màu xanh cyan sáng tạo điểm nhấn riêng cho USD */
+}
+
+/* --- CẤU HÌNH MODAL DARK MODE CHUYÊN NGHIỆP --- */
+.config-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(10, 12, 16, 0.85);
+  backdrop-filter: blur(6px); /* Làm mờ hậu cảnh phía sau */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+  animation: fadeInModal 0.25s ease-out;
+}
+
+.config-modal-card {
+  background: #181b23;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 420px;
+  padding: 28px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), 0 0 2px rgba(255, 255, 255, 0.1) inset;
+}
+
+.config-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 14px;
+}
+
+.config-modal-icon {
+  font-size: 20px;
+}
+
+.config-modal-title {
+  color: #ffffff;
+  font-size: 19px;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: 0.5px;
+}
+
+.config-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-bottom: 28px;
+}
+
+.config-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.config-form-group label {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.config-input-wrapper input {
+  width: 100%;
+  background: #0f1115;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 12px 14px;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 500;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.config-input-wrapper input:focus {
+  outline: none;
+  border-color: #4ade80;
+  box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.15);
+  background: #12151b;
+}
+
+.config-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.config-btn {
+  padding: 11px 22px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.config-btn-secondary {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.config-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+}
+
+.config-btn-primary {
+  background: #22c55e;
+  color: #052e16;
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.2);
+}
+
+.config-btn-primary:hover {
+  background: #4ade80;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(74, 222, 128, 0.3);
+}
+
+.config-btn-primary:active {
+  transform: translateY(0);
+}
+
+@keyframes fadeInModal {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* --- CSS TOAST NOTIFICATION DARK MODE --- */
+.toast-container {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  background: #1e2230;
+  border-left: 4px solid #22c55e;
+  border-radius: 8px;
+  padding: 16px 24px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5), 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  z-index: 10001;
+  animation: slideInRight 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+.toast-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.toast-icon {
+  font-size: 18px;
+}
+
+.toast-message {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+
+/* Hiệu ứng trượt từ phải sang */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* --- CSS ĐẢM BẢO CHỐNG VỠ GIAO DIỆN KHI THU NHỎ TRÌNH DUYỆT --- */
+
+/* 1. Cho phép bảng dữ liệu lớn xuất hiện thanh cuộn ngang độc lập (Không kéo vỡ màn hình chính) */
+.main-content, .main-container, .content-wrapper {
+  overflow-x: auto; /* Tự xuất hiện thanh cuộn ngang riêng cho bảng nếu màn hình quá hẹp */
+  padding: 15px;
+  box-sizing: border-box;
+}
+
+/* 2. Giữ nguyên kích thước tối thiểu của bảng đơn hàng để chữ không bị tràn, đè lên nhau */
+table {
+  min-width: 1200px; /* Ép bảng giữ độ rộng chuẩn để các cột hiển thị đẹp mắt */
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/* 3. Tự động co giãn hoặc xếp chồng thanh công cụ (Bộ lọc ngày, Tìm kiếm, Tab) khi màn hình hẹp dưới 1200px */
+@media screen and (max-width: 1200px) {
+  
+  /* Gom cụm các tab bộ lọc trạng thái tự động xuống dòng nếu thiếu chỗ */
+  .filter-tabs-container, .tabs-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 15px;
+  }
+  
+  /* Tự động chuyển hàng ngang chứa (Ô lịch + Ô tìm kiếm) thành dạng linh hoạt */
+  .toolbar, .filter-box, .date-box-parent {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    width: 100%;
+  }
+
+  /* Cho phép các ô input và ô lịch phình rộng hoặc thu hẹp tự nhiên */
+  .date-box input[type="date"], 
+  #search-input {
+    flex: 1;
+    min-width: 130px; /* Không cho phép thu nhỏ quá mức này */
+  }
+
+  /* Khối tổng tiền (Doanh thu, Tiền lời) ở góc phải tự động gom gọn lại */
+  .summary-container, .total-box-wrapper {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* Chia thành 2 cột đều nhau khi màn hình nhỏ */
+    gap: 10px;
+    width: 100%;
+    margin-top: 15px;
+  }
+}
+
+/* 4. Tối ưu riêng cho màn hình cực nhỏ (Dưới 768px - Giao diện điện thoại/máy tính bảng) */
+@media screen and (max-width: 768px) {
+  body {
+    flex-direction: column; /* Đẩy thanh Sidebar trái lên trên đầu, bảng đẩy xuống dưới */
+  }
+
+  .sidebar {
+    width: 100% !important;
+    height: auto;
+    position: relative;
+    padding: 10px;
+  }
+
+  .main-content, .main-container {
+    margin-left: 0 !important; /* Xóa khoảng trống lề trái vì Sidebar đã đẩy lên trên */
+    width: 100% !important;
+  }
+
+  .summary-container, .total-box-wrapper {
+    grid-template-columns: 1fr; /* Màn hình quá nhỏ thì xếp chồng 1 cột đứng */
+  }
+}
+
+
+/* --- HỆ THỐNG Sidebar ẨN / HIỆN TOÀN PHẦN CỐ ĐỊNH --- */
+.sidebar {
+  width: 240px; /* Độ rộng gốc của thanh menu */
+  position: fixed; /* Ép cố định bên trái */
+  top: 0;
+  left: 0;
+  height: 100vh;
+  z-index: 999;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Hiệu ứng trượt êm ái */
+}
+
+/* Khi kích hoạt chế độ ẩn: Đẩy toàn bộ menu thụt hẳn ra ngoài mép trái màn hình */
+.sidebar.collapsed {
+  transform: translateX(-240px);
+}
+
+/* NÚT BẤM NỔI BỀ MẶT CỐ ĐỊNH Ở MÉP TRÁI MÀN HÌNH */
+.toggle-sidebar-floating-btn {
+  position: fixed;
+  left: 240px; /* Ban đầu bám sát mép Sidebar */
+  top: 15px;
+  background-color: #2d3748;
+  border: 1px solid #4a5568;
+  color: #a0aec0;
+  border-radius: 0 4px 4px 0; /* Tạo bo góc dạng tab ở bên phải */
+  width: 20px;
+  height: 35px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  z-index: 1000; /* Luôn luôn nằm trên cùng */
+  transition: all 0.3s ease;
+  box-shadow: 2px 0 5px rgba(0,0,0,0.3);
+}
+
+.toggle-sidebar-floating-btn:hover {
+  color: #fff;
+  background-color: #4a5568;
+}
+
+/* Khi Sidebar ẩn hoàn toàn: Dịch nút bấm sát về lề trái 0px và đảo chiều mũi tên */
+.sidebar.collapsed ~ .toggle-sidebar-floating-btn,
+body:has(.sidebar.collapsed) .toggle-sidebar-floating-btn {
+  left: 0px !important;
+}
+
+/* KHỐI NỘI DUNG BẢNG LỚN BÊN PHẢI */
+.main-content, .main-container, .content {
+  margin-left: 240px; /* Trừ khoảng trống menu ban đầu */
+  width: calc(100% - 240px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Khi menu ẩn dứt điểm: Bảng tự động tràn viền rộng 100% ra sát mép màn hình */
+.sidebar.collapsed ~ .main-content,
+.sidebar.collapsed ~ .main-container,
+body:has(.sidebar.collapsed) .main-content {
+  margin-left: 0px !important;
+  width: 100% !important;
+}
+
+
+
+  </style>

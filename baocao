@@ -1,0 +1,12 @@
+<!-- Ruột nội dung của trang Báo cáo lợi nhuận -->
+<div class="header">
+  <div>
+    <h2>📊 BÁO CÁO LỢI NHUẬN</h2>
+    <p style="color: #a0aec0; font-size: 13px;">Thống kê chi tiết lợi nhuận, hiệu suất game và dòng tiền hệ thống.</p>
+  </div>
+</div>
+
+<div style="margin-top: 30px; text-align: center; color: #a0aec0; padding: 50px; background: rgba(22, 25, 37, 0.7); border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.06);">
+  <p style="font-size: 16px; color: #4ade80; font-weight: bold;">📊 [Khu vực thiết kế biểu đồ hoặc bảng số liệu thống kê doanh thu lợi nhuận của bạn]</p>
+  <p style="font-size: 13px; margin-top: 10px;">Bạn có thể viết thêm code HTML/JS lấy dữ liệu từ Google Sheets lên đây.</p>
+</div>

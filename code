@@ -1,0 +1,366 @@
+function doGet() {
+  return HtmlService.createTemplateFromFile('Index')
+      .evaluate()
+      .setTitle('Trader UI - New Order')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function include(filename) {
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
+}
+
+// Hàm tìm trang mặc định ban đầu nếu không chọn tháng
+function getCurrentSheetName(ss) {
+  var now = new Date();
+  var currentMonth = "T" + (now.getMonth() + 1) + "." + now.getFullYear();
+  if (ss.getSheetByName(currentMonth)) return currentMonth;
+  
+  // Nếu chưa có tháng hiện tại, tự động chọn tab đầu tiên trong file Sheet
+  var sheets = ss.getSheets();
+  return sheets.length > 0 ? sheets[0].getName() : "";
+}
+
+// // HÀM MỚI: Quét và liệt kê toàn bộ các tab tháng có định dạng T[Tháng].[Năm]
+function getAllMonthSheets() {
+  try {
+    var url = "https://docs.google.com/spreadsheets/d/1RmVgdS507J2BBc15ZyB_Jt-BXXkLbgB1_TKtQVqvNe4/edit";
+    var ss = SpreadsheetApp.openByUrl(url);
+    var sheets = ss.getSheets();
+    var monthSheets = [];
+    
+    sheets.forEach(function(sheet) {
+      var name = sheet.getName();
+      // Lọc các tên tab có định dạng T6.2026, T7.2026
+      if (/^T\d+\.\d+$/.test(name)) {
+        monthSheets.push(name);
+      }
+    });
+    
+    // THUẬT TOÁN SẮP XẾP: Tách riêng Tháng và Năm để so sánh dạng số, đưa tab lớn nhất lên đầu
+    monthSheets.sort(function(a, b) {
+      var partsA = a.replace("T", "").split(".");
+      var partsB = b.replace("T", "").split(".");
+      
+      var mA = parseInt(partsA[0], 10); // Đã sửa: lấy phần tử [0] là tháng
+      var yA = parseInt(partsA[1], 10); // Đã sửa: lấy phần tử [1] là năm
+      var mB = parseInt(partsB[0], 10); // Đã sửa: lấy phần tử [0] là tháng
+      var yB = parseInt(partsB[1], 10); // Đã sửa: lấy phần tử [1] là năm
+      
+      if (yA !== yB) return yB - yA; // Năm lớn hơn đứng trước
+      return mB - mA;               // Tháng lớn hơn đứng trước
+    });
+    
+    // Đặt mặc định là tab đầu tiên trong mảng đã sắp xếp (tab lớn nhất)
+    var defaultSheet = monthSheets.length > 0 ? monthSheets[0] : "";
+    
+    return {
+      monthSheets: monthSheets,
+      defaultSheet: defaultSheet
+    };
+  } catch (e) {
+    return { monthSheets: [], defaultSheet: "" };
+  }
+}
+
+
+
+function getStockData(selectedSheetName) {
+  try {
+    var url = "https://docs.google.com/spreadsheets/d/1RmVgdS507J2BBc15ZyB_Jt-BXXkLbgB1_TKtQVqvNe4/edit"; 
+    var ss = SpreadsheetApp.openByUrl(url);
+    var targetSheetName = selectedSheetName || getCurrentSheetName(ss);
+    var sheet = ss.getSheetByName(targetSheetName); 
+    
+    if (!sheet) return { error: "Không tìm thấy tab dữ liệu phù hợp." };
+    
+    var lastRow = sheet.getLastRow();
+    if (lastRow <= 1) return { error: "Tab '" + targetSheetName + "' hiện tại chưa có dữ liệu đơn hàng." }; 
+
+    var displayValues = sheet.getRange(1, 1, lastRow, 16).getDisplayValues();
+    var rows = displayValues.slice(1); 
+    // Đọc giá trị ngày gốc chứa đầy đủ năm từ cột A (Cột 1)
+    var realDateValues = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+    var formattedRows = rows.map(function(row, index) {
+      // FIX LỖI ĐỊNH DANH Ô CHÍNH XÁC THEO FILE BAN ĐẦU KHÔNG LỖI CỦA BẠN
+      var valD = row[3];  // Cột D (Index 3) - Xác nhận
+      var valP = row[15]; // Cột P (Index 15) - Đơn mới
+
+      // --- CHÈN 2 DÒNG NÀY NGAY TRƯỚC LỆNH RETURN ---
+    var rawCellDate = realDateValues[index] ? realDateValues[index][0] : null; 
+    var timestampForSorting = (rawCellDate instanceof Date) ? rawCellDate.getTime() : 0;
+
+      return {
+        rowIndex: index + 2, 
+        ngay: (function() {
+          if (!row) return '';
+          
+          var cleanRow = row.toString().trim(); // Ví dụ: "19" hoặc "15"
+          var numDay = parseInt(cleanRow);
+          
+          // Nếu dữ liệu trên Sheet chỉ nhập mỗi con số ngày (Từ số 1 đến 31)
+          if (!isNaN(numDay) && numDay >= 1 && numDay <= 31) {
+            var sheetParts = targetSheetName.replace("T", "").split("."); 
+            var yyyy = parseInt(sheetParts[1]) || new Date().getFullYear();
+            var mm = String(sheetParts[0]).padStart(2, '0');
+            var dd = String(numDay).padStart(2, '0'); // Định dạng lại số ngày thành 2 chữ số (Ví dụ: 19)
+            
+            return `${yyyy}-${mm}-${dd}`; // Trả về chuỗi đầy đủ: "2026-06-19"
+          }
+          
+          // Trường hợp trên Sheet là ô Date chuẩn có sẵn đầy đủ thông tin
+          var d = new Date(row);
+          if (d instanceof Date && !isNaN(d.getTime())) {
+            var yyyy = d.getFullYear();
+            var mm = String(d.getMonth() + 1).padStart(2, '0');
+            var dd = String(d.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+          }
+          
+          return cleanRow; // Trả về chuỗi gốc nếu chịu thua không phân tích được
+        })(),      
+        game: row[1] ? row[1].toString() : '',       
+        orderNo: row[2] ? row[2].toString() : '',    
+        statusD: (valD === "TRUE" || valD === "true" || valD === "✔" || valD === "checked" || valD === true), 
+        amount: row[4] ? row[4].toString() : '',     
+        nghiaK: row[5] ? row[5].toString() : '',     
+        nhanK: row[6] ? row[6].toString() : '',       
+        taxEu: row[7] ? row[7].toString() : '',   
+        taxOrder: row[8] ? row[8].toString() : '', // Cột I (Index 8)  
+        ratePo: row[11] ? row[11].toString() : '',   // Cột L (Index 11)  
+        cotM: row[12] ? row[12].toString() : '',     
+        cotN: row[13] ? row[13].toString() : '',     
+        statusP: (valP === "TRUE" || valP === "true" || valP === "✔" || valP === "checked" || valP === true) 
+      };
+    });
+
+      // --- THAY THẾ ĐOẠN SORT CŨ BẰNG ĐOẠN 3 TẦNG CHUẨN NÀY ---
+    formattedRows.sort(function(a, b) {
+      // 1. So sánh ngày trước (Ngày mới hơn lên đầu)
+      if (a.ngay !== b.ngay) {
+        return b.ngay.localeCompare(a.ngay); 
+      }
+      
+      // 2. Nếu cùng ngày, so sánh đến giờ chi tiết (Giờ mới hơn lên đầu)
+      if (a.timeSort !== b.timeSort) {
+        return b.timeSort - a.timeSort; 
+      }
+      
+      // 3. Nếu trùng cả ngày lẫn giờ (do Sheet không có giờ), đơn ở dòng dưới (rowIndex lớn hơn) sẽ lên đầu
+      return b.rowIndex - a.rowIndex; 
+    });
+
+
+      // Dòng return cũ của bạn giữ nguyên ngay phía dưới:
+      return { error: null, successData: formattedRows, sheetName: targetSheetName };
+      } catch (error) {
+        return { error: error.toString() };
+      }
+    }
+
+// Hàm đọc dữ liệu cũ ở ô Q1 và R1 gửi về giao diện hiển thị
+function getSystemSettings(selectedSheetName) {
+  try {
+    var url = "https://docs.google.com/spreadsheets/d/1RmVgdS507J2BBc15ZyB_Jt-BXXkLbgB1_TKtQVqvNe4/edit";
+    var ss = SpreadsheetApp.openByUrl(url);
+    var targetSheetName = selectedSheetName || getCurrentSheetName(ss);
+    var sheet = ss.getSheetByName(targetSheetName);
+    if (!sheet) return { taxOrder: "", ratePo: "" };
+    
+    // CHUẨN XÁC: Đọc ô Q1 (Dòng 1, Cột 17) và R1 (Dòng 1, Cột 18)
+    return {
+      taxOrder: sheet.getRange(1, 17).getDisplayValue(),  
+      ratePo: sheet.getRange(1, 18).getDisplayValue()   
+    };
+  } catch (e) {
+    return { taxOrder: "", ratePo: "" };
+  }
+}
+
+function saveSystemSettings(selectedSheetName, taxOrderValue, ratePoValue) {
+  try {
+    var url = "https://docs.google.com/spreadsheets/d/1RmVgdS507J2BBc15ZyB_Jt-BXXkLbgB1_TKtQVqvNe4/edit;"
+    var ss = SpreadsheetApp.openByUrl(url);
+    var targetSheetName = selectedSheetName || getCurrentSheetName(ss);
+    var sheet = ss.getSheetByName(targetSheetName);
+    if (!sheet) return "Không tìm thấy tab dữ liệu phù hợp.";
+    
+    // 1. Chuyển đổi dữ liệu nhập vào thành dạng số thuần túy
+    var taxNum = isNaN(taxOrderValue) ? taxOrderValue : Number(taxOrderValue);
+    var rateNum = isNaN(ratePoValue) ? ratePoValue : Number(ratePoValue);
+
+    // 2. Ghi giá trị gốc vào ô Q1 và R1
+    sheet.getRange(1, 17).setValue(taxNum); // Cột Q1
+    sheet.getRange(1, 18).setValue(rateNum); // Cột R1
+    
+    // 3. Tìm dòng cuối cùng đang có dữ liệu trong bảng để tự động cập nhật toàn cột
+    var lastRow = sheet.getLastRow();
+    
+    if (lastRow >= 2) {
+      // Xác định số lượng dòng cần ghi xuống (từ dòng 2 đến dòng cuối cùng)
+      var totalRowsToUpdate = lastRow - 1; 
+      
+      // Tạo sẵn mảng dữ liệu để ghi hàng loạt (giúp code chạy cực nhanh không bị lag)
+      var taxArray = [];
+      var rateArray = [];
+      for (var i = 0; i < totalRowsToUpdate; i++) {
+        taxArray.push([taxNum]);
+        rateArray.push([rateNum]);
+      }
+      
+      // Tiến hành ghi đè hàng loạt xuống Cột I (Cột số 9) và Cột L (Cột số 12) từ dòng 2
+      sheet.getRange(2, 9, totalRowsToUpdate, 1).setValues(taxArray);  // Đè hết cột I
+      sheet.getRange(2, 12, totalRowsToUpdate, 1).setValues(rateArray); // Đè hết cột L
+    }
+    
+    // Ép hệ thống cập nhật đồng bộ ngay lập tức
+    SpreadsheetApp.flush();
+    return "OK";
+    
+  } catch (e) {
+    return "Lỗi xử lý tại Server: " + e.toString();
+  }
+}
+
+
+
+
+
+function getGameList() {
+  try {
+    var url = "https://docs.google.com/spreadsheets/d/1RmVgdS507J2BBc15ZyB_Jt-BXXkLbgB1_TKtQVqvNe4/edit?gid=0#gid=0"; 
+    var ss = SpreadsheetApp.openByUrl(url);
+    var sheet = ss.getSheetByName("Game");
+    if (!sheet) return [];
+    var values = sheet.getDataRange().getDisplayValues();
+    var gameList = [];
+    for (var i = 1; i < values.length; i++) {
+      if (values[i][0] && values[i][0].trim() !== "") {
+        gameList.push(values[i][0].trim());
+      }
+    }
+    return gameList;
+  } catch(e) { return []; }
+}
+
+function updateOrderRow(targetSheetName, rowIndex, columnLetter, value) {
+  try {
+    var ss = SpreadsheetApp.openByUrl("https://docs.google.com/spreadsheets/d/1RmVgdS507J2BBc15ZyB_Jt-BXXkLbgB1_TKtQVqvNe4/edit");
+    var sheet = ss.getSheetByName(targetSheetName);
+    if (!sheet) return "Lỗi: Không thấy tab";
+    
+    // Cập nhật công thức nếu bắt đầu bằng '='
+    if (typeof value === 'string' && value.trim().indexOf('=') === 0) {
+      sheet.getRange(rowIndex, getColumnIndex(columnLetter)).setFormula(value);
+    } else {
+      sheet.getRange(rowIndex, getColumnIndex(columnLetter)).setValue(value);
+    }
+    return "OK";
+  } catch (e) { return "Lỗi: " + e.toString(); }
+}
+
+// Hàm bổ trợ ánh xạ chữ cái cột sang số
+function getColumnIndex(letter) {
+  var colMap = {'B':2,'D':4,'E':5,'F':6,'G':7,'H':8,'M':13,'N':14,'P':16,'Q':17,'R':18};
+  return colMap[letter] || 1;
+}
+
+// --- HÀM TẠO FILE EXCEL GHÉP NGÀY CHUẨN THEO ĐỊNH DẠNG SỐ 1, 2 CỦA SHEET ---
+function generateExcelBase64(selectedSheetName, dateFrom, dateTo, searchText, tabMode) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(selectedSheetName);
+  var lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return "";
+
+  // 1. Lấy dữ liệu tiêu đề và toàn bộ các dòng đơn hàng
+  var headers = sheet.getRange(1, 1, 1, 16).getDisplayValues();
+  var rawData = sheet.getRange(2, 1, lastRow - 1, 16).getDisplayValues();
+  
+  var csvContent = "";
+  
+  // Đưa dòng tiêu đề cột vào file báo cáo
+  csvContent += headers.join(",") + "\r\n";
+  
+  // 2. Duyệt qua từng dòng để lọc dữ liệu
+  rawData.forEach(function(row) {
+    if (!row || row.length === 0) return;
+
+    // ĐỌC CHÍNH XÁC THEO VỊ TRÍ CỘT TRÊN SHEET CỦA BẠN
+    var itemNgay = row[0] ? row[0].toString().trim() : "";   // Cột A (Ví dụ: "1", "2")
+    var itemGame = row[1] ? row[1].toString().trim() : "";   // Cột B
+    var itemOrder = row[2] ? row[2].toString().trim() : "";  // Cột C
+     // --- ĐOẠN ĐỒNG BỘ CHUẨN XÁC GIỮA TAB DASHBOARD VÀ CHECKBOX GOOGLE SHEET ---
+    var itemStatus = row[3] ? row[3].toString().toUpperCase().trim() : ""; // Cột D (Xác nhận)
+    var itemDonMoi = row[15] ? row[15].toString().toUpperCase().trim() : ""; // Cột P (Đơn mới)
+
+      // // Lọc theo đúng logic phối hợp Checkbox 2 cột của bạn
+    if (tabMode !== 'all') {
+      
+      // 1. Tab "Đơn mới về" (Bao gồm cả trường hợp đặc biệt Xác nhận=TRUE, Đơn mới=FALSE)
+      if (tabMode === 'new') {
+        // Điều kiện chuẩn: XN=FALSE và DM=FALSE
+        var dieuKienChuan = (itemStatus === 'FALSE' && itemDonMoi === 'FALSE');
+        // Điều kiện đặc biệt: XN=TRUE và DM=FALSE
+        var dieuKienDacBiet = (itemStatus === 'TRUE' && itemDonMoi === 'FALSE');
+        
+        // Nếu không thuộc cả 2 trường hợp trên -> Bỏ qua không đưa vào file
+        if (!dieuKienChuan && !dieuKienDacBiet) return;
+      }
+      
+      // 2. Tab "Đơn chưa confirm": Xác nhận phải là FALSE VÀ Đơn mới phải là TRUE
+      if (tabMode === 'unconfirm') {
+        if (!(itemStatus === 'FALSE' && itemDonMoi === 'TRUE')) return;
+      }
+      
+      // 3. Tab "Đơn đã confirm": Xác nhận phải là TRUE VÀ Đơn mới phải là TRUE
+      if (tabMode === 'confirm') {
+        if (!(itemStatus === 'TRUE' && itemDonMoi === 'TRUE')) return;
+      }
+    }
+
+    // B. LỌC THEO Ô TÌM KIẾM VĂN BẢN (MÃ ĐƠN / TÊN GAME)
+    if (searchText) {
+      var textCombine = (itemGame + " " + itemOrder).toLowerCase();
+      if (textCombine.indexOf(searchText.toLowerCase()) === -1) return;
+    }
+
+    // C. DỰA VÀO TÊN SHEET ĐỂ GHÉP THÀNH CHUỖI NGÀY DẠNG YYYY-MM-DD
+    var formattedItemDate = "";
+    var numDay = parseInt(itemNgay);
+
+    if (!isNaN(numDay) && numDay >= 1 && numDay <= 31) {
+      // Giả sử tên sheet của bạn có dạng "T6.2026", ta cắt chữ "T" đi để lấy [6, 2026]
+      var sheetParts = selectedSheetName.replace("T", "").split(".");
+      var yyyy = parseInt(sheetParts[1]) || new Date().getFullYear();
+      var mm = String(sheetParts[0]).padStart(2, '0');
+      var dd = String(numDay).padStart(2, '0'); 
+
+      formattedItemDate = yyyy + "-" + mm + "-" + dd; // Tạo ra chuỗi chuẩn dạng "2026-06-01"
+    } else if (itemNgay.includes('/')) {
+      var parts = itemNgay.split('/');
+      if (parts.length === 3) {
+        formattedItemDate = parts[2].trim() + "-" + parts[1].trim().padStart(2, '0') + "-" + parts[0].trim().padStart(2, '0');
+      }
+    } else {
+      formattedItemDate = itemNgay;
+    }
+
+    // Tiến hành so sánh khoảng ngày lọc
+    if (dateFrom && formattedItemDate < dateFrom) return; // Nhỏ hơn ngày bắt đầu -> Bỏ qua
+    if (dateTo && formattedItemDate > dateTo) return;     // Lớn hơn ngày kết thúc -> Bỏ qua
+
+    // D. ĐỊNH DẠNG DÒNG HỢP LỆ VÀ ĐẨY VÀO CHUỖI CSV
+    var cleanRow = row.map(function(cell) {
+      var str = cell ? cell.toString().replace(/"/g, '""') : ""; 
+      return str.includes(',') ? '"' + str + '"' : str; 
+    });
+    
+    csvContent += cleanRow.join(",") + "\r\n";
+  });
+
+  // 3. Mã hóa Base64 gửi về Client tải xuống
+  var blob = Utilities.newBlob("\uFEFF" + csvContent, "text/csv;charset=utf-8", "Bao_Cao_Don_Hang.csv");
+  return Utilities.base64Encode(blob.getBytes());
+}
+
+
+
+

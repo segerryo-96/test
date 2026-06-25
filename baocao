@@ -1,12 +1,165 @@
-<!-- Ruột nội dung của trang Báo cáo lợi nhuận -->
-<div class="header">
-  <div>
-    <h2>📊 BÁO CÁO LỢI NHUẬN</h2>
-    <p style="color: #a0aec0; font-size: 13px;">Thống kê chi tiết lợi nhuận, hiệu suất game và dòng tiền hệ thống.</p>
-  </div>
+ <div class="header">
+              <div>
+                <h2>QUẢN LÝ DOANH THU</h2>
+                <p style="color: #a0aec0; font-size: 13px;">Tổng quan về doanh thu (Tự động cập nhật dữ liệu...)</p>
+              </div>
+              <div id="global-status" style="margin-right: auto; margin-left: 20px;"></div>
+              <div>
+                <button class="btn" onclick="openSettingModal()">+ ĐIỀU CHỈNH</button>
+                <button class="btn" onclick="exportCurrentTableToExcel()" style="background-color: #4f46e5;">📊 Xuất Excel</button>
+                <button class="btn btn-orange">CONVERSION</button>
+              </div>
+            </div>
+
+<!-- KHỐI KPI 1 HÀNG NGANG CHUYÊN NGHIỆP -->
+<div id="profit-kpi-wrapper" style="margin-bottom: 15px; display: grid; grid-template-columns: repeat(6, 1fr); background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 14px 10px; box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 4px 20px rgba(0, 0, 0, 0.3); backdrop-filter: blur(10px);">
+  <div style="color: #94a3b8; font-size: 13px; grid-column: span 6; text-align: center; padding: 5px 0;">⏳ Đang kết nối dữ liệu hệ thống báo cáo lợi nhuận...</div>
 </div>
 
-<div style="margin-top: 30px; text-align: center; color: #a0aec0; padding: 50px; background: rgba(22, 25, 37, 0.7); border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.06);">
-  <p style="font-size: 16px; color: #4ade80; font-weight: bold;">📊 [Khu vực thiết kế biểu đồ hoặc bảng số liệu thống kê doanh thu lợi nhuận của bạn]</p>
-  <p style="font-size: 13px; margin-top: 10px;">Bạn có thể viết thêm code HTML/JS lấy dữ liệu từ Google Sheets lên đây.</p>
+<!-- KHỐI BỐ CỤC HAI BẢNG SONG SONG - ÉP SÁT KHOẢNG CÁCH GẦN NHAU -->
+<div style="display: flex; gap: 15px; align-items: flex-start; justify-content: flex-start; width: 100%;">
+  
+  <!-- BẢNG BIẾN ĐỘNG CHI TIẾT THEO NGÀY (CỘT TRÁI - TỰ CO THEO NỘI DUNG) -->
+  <div style="flex: 0 1 auto; max-width: 65%;">
+    <p style="font-size: 12px; color: #94a3b8; font-weight: 600; margin-bottom: 8px; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+      <span>📈</span> BIẾN ĐỘNG CHI TIẾT THEO NGÀY
+    </p>
+    <div id="profit-table-wrapper" style="overflow-x: auto; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.05);"></div>
+  </div>
+
+  <!-- BẢNG THEO DÕI PO SELL (CỘT PHẢI - ÉP SÁT LẠI CÀNG GẦN CÀNG TỐT) -->
+  <div style="flex: 0 1 auto; max-width: 35%;">
+    <p style="font-size: 12px; color: #f59e0b; font-weight: 600; margin-bottom: 8px; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+      <span>💵</span> THÔNG TIN PO SELL
+    </p>
+    <div id="po-sell-table-wrapper" style="overflow-x: auto; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.05);"></div>
+  </div>
+
 </div>
+
+<script>
+  (function() {
+    function startLoading() {
+      let sheetName = (typeof CURRENT_SELECTED_SHEET !== 'undefined') ? CURRENT_SELECTED_SHEET : "";
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(renderProfitUI)
+          .withFailureHandler(function(err) {
+            let tBox = document.getElementById('profit-table-wrapper');
+            if (tBox) tBox.innerHTML = '<p style="color:#f87171;padding:15px;">❌ Lỗi kết nối: ' + err.message + '</p>';
+          })
+          .getProfitReportData(sheetName);
+      }
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", startLoading);
+    } else {
+      startLoading();
+    }
+
+    function renderProfitUI(result) {
+      const kpiWrapper = document.getElementById('profit-kpi-wrapper');
+      const tableWrapper = document.getElementById('profit-table-wrapper');
+      const poTableWrapper = document.getElementById('po-sell-table-wrapper');
+
+      if (!kpiWrapper || !tableWrapper || !poTableWrapper) return;
+
+      if (!result || result.error) {
+        kpiWrapper.innerHTML = '<div style="color:#f87171;grid-column:span 6;text-align:center;">❌ Lỗi: ' + (result ? result.error : "Không có phản hồi") + '</div>';
+        return;
+      }
+
+      const mainData = result.successData || [];
+      const poData = result.successPoData || [];
+      let dailyRows = [], poSellRows = [];
+      let summary = { lai: "0đ", vndNhan: "0đ", chiNhan: "0đ", chiNghia: "0đ", sdNhan: "0đ", sdNghia: "0đ" };
+
+      // 1. XỬ LÝ DỮ LIỆU BẢNG NGÀY TRÁI
+      for (let i = 1; i < mainData.length; i++) {
+        let row = mainData[i];
+        if (!row || row.length < 2) continue;
+        let colA = row[0].toString().trim();
+        let rowString = row.join(" | ");
+
+        if (colA === "Tổng") {
+          summary.vndNhan = row[2] || "0đ"; 
+          summary.chiNghia = row[3] || "0đ"; 
+          summary.chiNhan = row[4] || "0đ"; 
+          summary.lai = row[5] || "0đ";
+        } else if (rowString.includes("Số dư hiện tại") && mainData[i + 1]) {
+          let nextRow = mainData[i + 1];
+          if (nextRow) {
+            let valid = nextRow.filter(v => v.toString().trim() !== "" && v.toString().trim() !== "0đ" && v.toString().trim() !== "$0.00");
+            summary.sdNhan = valid[0] || "0đ"; 
+            summary.sdNghia = valid[1] || "0đ";
+          }
+        } else if (!isNaN(parseInt(colA)) && parseInt(colA) >= 1 && parseInt(colA) <= 31) {
+          if (row[1] !== "$0.00" && row[1] !== "" && row[1] !== "0đ") {
+            dailyRows.push(row);
+          }
+        }
+      }
+
+      // 2. XỬ LÝ KHỐI PO SELL
+      for (let j = 2; j < poData.length; j++) {
+        let row = poData[j];
+        if (!row || row.length < 4) continue;
+        
+        let usd = row[0].toString().trim();
+        let rate = row[1].toString().trim();
+        let vnd = row[2].toString().trim();
+        let date = row[3].toString().trim();
+
+        if (vnd === "000đ" || usd.includes("NGÂN SÁCH") || usd.includes("Tổng") || usd === "0" || usd === "") {
+          break; 
+        }
+
+        poSellRows.push({ usd: usd, rate: rate, vnd: vnd, date: date });
+      }
+
+      // ĐỔ KPI CARD LÊN THANH NGANG
+      kpiWrapper.innerHTML = `
+        <div style="text-align:center;border-right:1px solid rgba(255,255,255,0.06);padding:2px 5px;"><span style="font-size:10px;color:#94a3b8;display:block;margin-bottom:4px;">📊 TỔNG LỜI</span><span style="font-size:14px;font-weight:700;color:#10b981;text-shadow:0 0 10px rgba(16,185,129,0.2);">${summary.lai}</span></div>
+        <div style="text-align:center;border-right:1px solid rgba(255,255,255,0.06);padding:2px 5px;"><span style="font-size:10px;color:#94a3b8;display:block;margin-bottom:4px;">📥 TỔNG NHẬN</span><span style="font-size:14px;font-weight:700;color:#f59e0b;text-shadow:0 0 10px rgba(245,158,11,0.2);">${summary.vndNhan}</span></div>
+        <div style="text-align:center;border-right:1px solid rgba(255,255,255,0.06);padding:2px 5px;"><span style="font-size:10px;color:#64748b;display:block;margin-bottom:4px;">🏦 SĐ (NHÂN)</span><span style="font-size:14px;font-weight:700;color:#3b82f6;text-shadow:0 0 10px rgba(59,130,246,0.2);">${summary.sdNhan}</span></div>
+        <div style="text-align:center;border-right:1px solid rgba(255,255,255,0.06);padding:2px 5px;"><span style="font-size:10px;color:#64748b;display:block;margin-bottom:4px;">💸 CHI (NHÂN)</span><span style="font-size:14px;font-weight:600;color:#cbd5e1;">${summary.chiNhan}</span></div>
+        <div style="text-align:center;border-right:1px solid rgba(255,255,255,0.06);padding:2px 5px;"><span style="font-size:10px;color:#64748b;display:block;margin-bottom:4px;">💳 SĐ (NGHĨA)</span><span style="font-size:14px;font-weight:700;color:#06b6d4;text-shadow:0 0 10px rgba(6,182,212,0.2);">${summary.sdNghia}</span></div>
+        <div style="text-align:center;padding:2px 5px;"><span style="font-size:10px;color:#64748b;display:block;margin-bottom:4px;">💸 CHI (NGHĨA)</span><span style="font-size:14px;font-weight:600;color:#cbd5e1;">${summary.chiNghia}</span></div>
+      `;
+
+      // DỰNG BẢNG NGÀY (BÊN TRÁI)
+      let tableHtml = '<table class="data-table" style="width:max-content;min-width:100%;border-collapse:separate;border-spacing:0;"><thead><tr>';
+      ["NGÀY","ORDER AMOUNT","VND NHẬN","NGHĨA","NHÂN","LÃI"].forEach(h => { tableHtml += '<th style="padding:10px 12px;text-align:center;font-size:11px;background:rgba(30, 41, 59, 0.6);color:#94a3b8;white-space:nowrap;">' + h + '</th>'; });
+      tableHtml += '</tr></thead><tbody>';
+      dailyRows.forEach(r => {
+        tableHtml += '<tr>';
+        for(let k=0; k<6; k++) {
+          let customStyle = (k === 5 && r[k] !== "0đ" && !r[k].toString().includes("-")) ? "color:#10b981;font-weight:600;" : "";
+          tableHtml += '<td style="padding:10px 12px;text-align:center;font-size:12px;color:#cbd5e1;border-bottom:1px solid rgba(255,255,255,0.03);white-space:nowrap;' + customStyle + '">' + (r[k] || "") + '</td>';
+        }
+        tableHtml += '</tr>';
+      });
+      tableWrapper.innerHTML = tableHtml + '</tbody></table>';
+
+      // DỰNG BẢNG PO SELL (BÊN PHẢI)
+      let poHtml = '<table class="data-table" style="width:max-content;min-width:100%;border-collapse:separate;border-spacing:0;"><thead><tr>';
+      ["NGÀY","USD","RATE","VND"].forEach(h => { poHtml += '<th style="padding:10px 12px;text-align:center;font-size:11px;background:rgba(30, 41, 59, 0.6);color:#94a3b8;white-space:nowrap;">' + h + '</th>'; });
+      poHtml += '</tr></thead><tbody>';
+      if (poSellRows.length === 0) {
+        poHtml += '<tr><td colspan="4" style="padding:20px;text-align:center;color:#64748b;font-size:12px;">Chưa có dữ liệu PO Sell</td></tr>';
+      } else {
+        poSellRows.forEach(item => {
+          poHtml += '<tr>';
+          poHtml += '<td style="padding:10px 12px;text-align:center;color:#cbd5e1;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.03);white-space:nowrap;">' + item.date + '</td>';
+          poHtml += '<td style="padding:10px 12px;text-align:center;color:#3b82f6;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.03);white-space:nowrap;">' + item.usd + '</td>';
+          poHtml += '<td style="padding:10px 12px;text-align:center;color:#94a3b8;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.03);white-space:nowrap;">' + item.rate + '</td>';
+          poHtml += '<td style="padding:10px 12px;text-align:center;color:#f59e0b;font-weight:600;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.03);white-space:nowrap;">' + item.vnd + '</td>';
+          poHtml += '</tr>';
+        });
+      }
+      poTableWrapper.innerHTML = poHtml + '</tbody></table>';
+    }
+    window.fetchProfitReportData = startLoading;
+  })();
+</script>

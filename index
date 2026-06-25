@@ -262,17 +262,23 @@
       if (select) {
         CURRENT_SELECTED_SHEET = select.value;
         currentPage = 1; // Reset về trang số 1 khi đổi tháng
-        
-        // Gọi chính xác hàm tải dữ liệu gốc của bạn để bốc dữ liệu mới từ Server về
+
+        // Gọi chính xác hàm tải dữ liệu gốc của bạn để bốc dữ liệu mới từ Server về (Trang Quản lý đơn)
         if (typeof fetchData === "function") {
-          fetchData(); 
+          fetchData();
         } else if (typeof loadStockData === "function") {
           loadStockData();
         } else if (typeof refreshDataFromServer === "function") {
           refreshDataFromServer();
         }
+
+        // 🔥 ĐOẠN THÊM MỚI: Tự động cập nhật bảng tính bên trang Báo cáo lợi nhuận
+        if (typeof fetchProfitReportData === "function") {
+          fetchProfitReportData();
+        }
       }
     }
+
 
 
 

@@ -6,8 +6,15 @@ function doGet() {
 }
 
 function include(filename) {
-  return HtmlService.createHtmlOutputFromFile(filename).getContent();
+  try {
+    // Ép kiểu chữ thường và tìm kiếm linh hoạt file hệ thống
+    return HtmlService.createHtmlOutputFromFile(filename).getContent();
+  } catch (err) {
+    // Nếu lỗi không tìm thấy file, trả về thẻ div ẩn thay vì sập toàn bộ trang
+    return '<!-- Error include file: ' + filename + ' -->';
+  }
 }
+
 
 // Hàm tìm trang mặc định ban đầu nếu không chọn tháng
 function getCurrentSheetName(ss) {
@@ -361,6 +368,55 @@ function generateExcelBase64(selectedSheetName, dateFrom, dateTo, searchText, ta
   return Utilities.base64Encode(blob.getBytes());
 }
 
+function getProfitReportData(selectedSheetName) {
+  try {
+    var url = "https://docs.google.com/spreadsheets/d/1RmVgdS507J2BBc15ZyB_Jt-BXXkLbgB1_TKtQVqvNe4/edit";
+    var ss = SpreadsheetApp.openByUrl(url);
+    
+    // 1. Xác định chuỗi tìm kiếm (Ví dụ: "T6.2026" hoặc số tháng "6")
+    var searchName = selectedSheetName ? selectedSheetName.toString().trim() : "T" + (new Date().getMonth() + 1) + "." + new Date().getFullYear();
+    var matchMonth = searchName.match(/T(\d+)/); 
+    var monthNum = matchMonth ? matchMonth[1] : ""; // Lấy ra số "6" từ chuỗi "T6.2026"
 
+    var sheets = ss.getSheets();
+    var sheet = null;
 
+    // 2. Thuật toán quét tìm kiếm tab thông minh chống sai tên tab
+    for (var i = 0; i < sheets.length; i++) {
+      var sName = sheets[i].getName();
+      // Nếu tên tab khớp chính xác, hoặc chứa "Phí T6", hoặc chứa "Tháng 6"
+      if (sName === searchName || 
+          sName === "Phí " + searchName || 
+          sName.indexOf(searchName) !== -1 || 
+          (monthNum !== "" && sName.indexOf("Tháng " + monthNum) !== -1)) {
+        sheet = sheets[i];
+        break;
+      }
+    }
 
+    if (!sheet) {
+      return { error: "Hệ thống không tìm thấy Tab ứng với giá trị: " + searchName };
+    }
+    
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 1) return { error: "Tab dữ liệu rỗng." };
+    
+    // Đọc riêng cụm bảng dữ liệu ngày (Cột A đến F)
+    var mainData = sheet.getRange(1, 1, lastRow, 6).getDisplayValues();
+    
+    // Đọc riêng cụm bảng dữ liệu PO SELL (Cột L đến O là cột 12 đến cột 15)
+    var poData = [];
+    var lastCol = sheet.getLastColumn();
+    if (lastCol >= 15) {
+      poData = sheet.getRange(1, 12, lastRow, 4).getDisplayValues();
+    }
+    
+    return { 
+      successData: mainData, 
+      successPoData: poData,
+      sheetName: sheet.getName()
+    };
+  } catch (err) {
+    return { error: err.toString() };
+  }
+}
